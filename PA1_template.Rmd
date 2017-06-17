@@ -6,20 +6,143 @@ output:
 ---
 
 
-## Loading and preprocessing the data
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(scales)
+library(knitr)
+library(gridExtra)
+```  
 
+## R Markdown
 
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-## What is mean total number of steps taken per day?
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
+```{r echo=TRUE}
+originalData <- read.table("./activity.csv", sep = ",", header = TRUE)
 
+activityCSV <- originalData[!is.na(originalData$steps),]
 
-## What is the average daily activity pattern?
+activityCSV$steps <- as.numeric(as.character(activityCSV$steps))
+activityCSV$date <- as.Date(as.character(activityCSV$date))
+activityCSV$interval <- as.numeric(as.character(activityCSV$interval))
+activityCSV$dateNum <- as.numeric(activityCSV$date)
 
+```
 
+## Histogram:  Calculate the total number of steps taken per day ##
 
-## Imputing missing values
+```{r echo=TRUE}
+# steps per day
+groupedSteps <- aggregate(steps~date, FUN=mean, data=activityCSV)
 
+g<-ggplot(data=groupedSteps,aes(x=date,y=steps)) + geom_bar(stat="identity")
 
+g
 
-## Are there differences in activity patterns between weekdays and weekends?
+```
+
+## Calculate and report the mean and median of the total number of steps taken per day ##
+
+### Mean ###
+
+```{r}
+
+mean(activityCSV$steps)
+
+```
+
+### Median ###
+
+```{r}
+
+median(activityCSV$steps)
+
+```
+
+## 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis) ##
+
+```{r echo=TRUE}
+aggregatedData <- aggregate(x = activityCSV,by = list(activityCSV$interval), FUN=mean)
+
+ggplot(data=aggregatedData, aes(x=interval, y=steps)) + geom_line()
+```
+
+## maximum number of steps ##
+
+```{r}
+
+orderedData <- aggregatedData[ order(-aggregatedData[,2]), ]
+  
+head(orderedData,n=1)
+
+```
+
+# Imputing missing values #
+
+## Total Missing Values in Data Set ##
+
+```{r}
+originalNA <- originalData[is.na(originalData$steps),]
+
+count(originalNA)
+```
+
+## replace values with 0 ##
+
+Assumes that NA results in 0 due to the fact that we have no reference for assuming what the NA value is.
+
+```{r echo=TRUE}
+originalData <- read.table("./activity.csv", sep = ",", header = TRUE)
+
+originalData$steps[is.na(originalData$steps)] <- 0
+
+activityCSV <- originalData[!is.na(originalData$steps),]
+
+activityCSV$steps <- as.numeric(as.character(activityCSV$steps))
+activityCSV$date <- as.Date(as.character(activityCSV$date))
+
+activityCSV$interval <- as.numeric(as.character(activityCSV$interval))
+
+activityCSV$dateNum <- as.numeric(activityCSV$date)
+groupedSteps <- aggregate(steps~date, FUN=mean, data=activityCSV)
+
+g<-ggplot(data=groupedSteps,aes(x=date,y=steps)) + geom_bar(stat="identity")
+
+g
+
+```
+
+### Mean ###
+
+```{r}
+
+mean(activityCSV$steps)
+
+```
+
+### Median ###
+
+```{r}
+
+median(activityCSV$steps)
+
+```
+
+### weekends vs weekdays ###
+
+```{r echo=TRUE}
+
+activityCSV$weekday<-weekdays(activityCSV$date)
+  
+activityCSV1 = subset(activityCSV,activityCSV$weekday == "Saturday" | activityCSV$weekday == "Sunday")
+activityCSV2 = subset(activityCSV,activityCSV$weekday != "Saturday" & activityCSV$weekday != "Sunday")
+  
+plot1 <- ggplot(data=activityCSV1, aes(x=interval, y=steps)) + geom_line() + ggtitle("Weekends")
+plot2 <- ggplot(data=activityCSV2, aes(x=interval, y=steps)) + geom_line() + ggtitle("Weekdays")
+grid.arrange(plot1, plot2, ncol=1)
+  
+```
